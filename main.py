@@ -34,7 +34,8 @@ def get_pending_videos(drive_service, folder_id):
     )
     results = drive_service.files().list(
         q=query,
-        fields="files(id, name, mimeType)",
+        orderBy="createdTime",
+        fields="files(id, name, mimeType, createdTime)",
         pageSize=50
     ).execute()
 
