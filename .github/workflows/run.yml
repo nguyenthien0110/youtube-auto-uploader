@@ -1,0 +1,33 @@
+name: Auto Upload Drive Videos to YouTube
+
+on:
+  schedule:
+    # Chạy mỗi 6 tiếng (tùy chỉnh cron theo ý bạn)
+    - cron: "0 */6 * * *"
+  workflow_dispatch: # Cho phép bấm nút "Run workflow" thủ công trên giao diện GitHub
+
+jobs:
+  upload-videos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Execute uploader script
+        env:
+          GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+          GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
+          SOURCE_FOLDER_ID: ${{ secrets.SOURCE_FOLDER_ID }}
+          ARCHIVE_FOLDER_ID: ${{ secrets.ARCHIVE_FOLDER_ID }}
+        run: python main.py
