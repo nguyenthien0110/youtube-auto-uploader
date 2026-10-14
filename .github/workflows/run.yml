@@ -14,7 +14,10 @@ jobs:
   upload-videos:
     runs-on: ubuntu-latest
     steps:
-      - name: Kiểm tra giờ chạy
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Kiểm tra giờ và trạng thái chạy hôm nay
         id: check_schedule
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -25,18 +28,22 @@ jobs:
           TARGET_HOUR="${{ vars.SCHEDULE_HOUR || '7' }}"
           CURRENT_HOUR=$(TZ='Asia/Ho_Chi_Minh' date +%H | sed 's/^0//')
           TARGET_HOUR=$(echo "$TARGET_HOUR" | sed 's/^0//')
+          TODAY=$(TZ='Asia/Ho_Chi_Minh' date +%Y-%m-%d)
 
-          echo "Current: ${CURRENT_HOUR}h | Target: ${TARGET_HOUR}h"
+          # Kiểm tra xem hôm nay đã có lượt chạy thành công nào chưa qua GitHub API
+          RUN_COUNT=$(gh api "repos/${{ github.repository }}/actions/workflows/run.yml/runs?event=schedule&status=success&created=>=${TODAY}T00:00:00Z" --jq '.total_count')
 
-          if [ "$CURRENT_HOUR" -eq "$TARGET_HOUR" ]; then
+          echo "Hôm nay ($TODAY) đã chạy: $RUN_COUNT lần | Giờ hiện tại: ${CURRENT_HOUR}h | Cấu hình: ${TARGET_HOUR}h"
+
+          if [ "$CURRENT_HOUR" -ge "$TARGET_HOUR" ] && [ "$RUN_COUNT" -eq 0 ]; then
+            echo "Đã đến hoặc qua giờ hẹn và hôm nay chưa chạy -> Kích hoạt."
             echo "should_run=true" >> $GITHUB_OUTPUT
           else
+            echo "Chưa tới giờ hoặc hôm nay đã upload rồi -> Bỏ qua."
             echo "should_run=false" >> $GITHUB_OUTPUT
           fi
-
-      - name: Checkout repository
-        if: steps.check_schedule.outputs.should_run == 'true'
-        uses: actions/checkout@v4
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         if: steps.check_schedule.outputs.should_run == 'true'
